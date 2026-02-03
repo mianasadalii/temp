@@ -1,0 +1,90 @@
+C51 COMPILER V9.60.0.0   LAB6                                                              02/02/2026 11:58:25 PAGE 1   
+
+
+C51 COMPILER V9.60.0.0, COMPILATION OF MODULE LAB6
+OBJECT MODULE PLACED IN .\Objects\lab6.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE lab6.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\lab6
+                    -.lst) TABS(2) OBJECT(.\Objects\lab6.obj)
+
+line level    source
+
+   1          #ifndef F_CPU
+   2          #define F_CPU 8000000UL 
+   3          #endif
+   4          
+   5          #include <avr/io.h>
+*** WARNING C318 IN LINE 5 OF lab6.c: can't open file 'avr/io.h'
+   6          #include <util/delay.h>
+*** WARNING C318 IN LINE 6 OF lab6.c: can't open file 'util/delay.h'
+   7          
+   8          // Circuit Mapping (Matching your Proteus Diagram)
+   9          // RS -> PC2, EN -> PC3, D4-D7 -> PC4-PC7
+  10          #define LCD_DIR  DDRC
+  11          #define LCD_PORT PORTC
+  12          #define RS PC2
+  13          #define EN PC3
+  14          
+  15          void lcd_pulse(void) {
+  16   1          LCD_PORT |= (1 << EN);
+*** ERROR C202 IN LINE 16 OF lab6.c: 'PORTC': undefined identifier
+  17   1          _delay_us(200);
+  18   1          LCD_PORT &= ~(1 << EN);
+  19   1      }
+  20          
+  21          void lcd_send(uint8_t data, uint8_t rs_type) {
+  22   1          if (rs_type)
+  23   1              LCD_PORT |= (1 << RS);  // Data mode
+  24   1          else
+  25   1              LCD_PORT &= ~(1 << RS); // Command mode
+  26   1      
+  27   1          // High nibble send karein
+  28   1          LCD_PORT = (LCD_PORT & 0x0F) | (data & 0xF0);
+  29   1          lcd_pulse();
+  30   1      
+  31   1          // Low nibble send karein
+  32   1          LCD_PORT = (LCD_PORT & 0x0F) | ((data << 4) & 0xF0);
+  33   1          lcd_pulse();
+  34   1          _delay_ms(2);
+  35   1      }
+  36          
+  37          void lcd_init(void) {
+  38   1          _delay_ms(20);
+  39   1          lcd_send(0x02, 0); // 4-bit mode initialize
+  40   1          lcd_send(0x28, 0); // 2 line, 5x7 matrix
+  41   1          lcd_send(0x0C, 0); // Display ON, Cursor OFF
+  42   1          lcd_send(0x01, 0); // Clear Screen
+  43   1          _delay_ms(2);
+  44   1      }
+  45          
+  46          int main(void) {
+  47   1          // Port C pins (PC2-PC7) ko output set karein
+  48   1          LCD_DIR = 0xFC; 
+  49   1          
+  50   1          // SPI Pins (PB4=SS, PB5=MOSI, PB7=SCK) ko output set karein
+  51   1          DDRB |= (1 << PB4) | (1 << PB5) | (1 << PB7);
+C51 COMPILER V9.60.0.0   LAB6                                                              02/02/2026 11:58:25 PAGE 2   
+
+  52   1      
+  53   1          lcd_init();
+  54   1      
+  55   1          // SPI Enable, Master Mode, Fosc/16
+  56   1          SPCR = (1 << SPE) | (1 << MSTR) | (1 << SPR0);
+  57   1      
+  58   1          char msg[] = "SPI DATA:";
+  59   1      
+  60   1          while (1) {
+  61   2              PORTB &= ~(1 << PB4); // SS Low (Select Slave)
+  62   2              SPDR = 'A';           // 'A' send karein
+  63   2              while (!(SPSR & (1 << SPIF))); // Wait for transfer
+  64   2              char received = SPDR; // Data receive karein
+  65   2              PORTB |= (1 << PB4);  // SS High
+  66   2      
+  67   2              lcd_send(0x80, 0); // First line
+  68   2              for (int i = 0; msg[i]; i++) lcd_send(msg[i], 1);
+  69   2              
+  70   2              lcd_send(received, 1); // Display the received char
+  71   2              _delay_ms(1000);
+  72   2          }
+  73   1      }
+
+C51 COMPILATION COMPLETE.  2 WARNING(S),  1 ERROR(S)
